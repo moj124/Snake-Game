@@ -19,9 +19,9 @@ class Snake:
         self.x = x
         self.y = y
         self.length = length
-        self.VEL = 21
+        self.VEL = 25
         self.direction = 3
-        self.width, self.height = 20, 20
+        self.width, self.height = 25, 25
         self.updateCount = 0
         self.updateCountMax = 11
         self.colour = colour
@@ -94,11 +94,11 @@ class Player(Snake):
 class Computer(Snake):
     def __init__(self, x, y, length):
         super().__init__(x, y, length, "blue")
-        self.VEL = 3
+        self.updateCountMax = 60
 
     def target(self, dx, dy):
-        print("dx,dy,x,y: {},{},{},{}  direction: {}".format(dx, dy, self.body_parts[0].x, self.body_parts[0].y,
-                                                             self.direction))
+        # print("dx,dy,x,y: {},{},{},{}  direction: {}".format(dx, dy, self.body_parts[0].x, self.body_parts[0].y,
+        #                                                      self.direction))
         if self.body_parts[0].x > dx:
             self.direction = 0
         if self.body_parts[0].x < dx:
@@ -115,7 +115,7 @@ class SnakeBody:
     def __init__(self, x, y, colour):
         self.x = x
         self.y = y
-        self.width, self.height = 20, 20
+        self.width, self.height = 25, 25
         self.img = pygame.Rect(self.x, self.y, self.width, self.height)
         if colour == "red":
             self.colour = (255, 0, 0)
@@ -131,7 +131,7 @@ class Food:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.width, self.height = 20, 20
+        self.width, self.height = 25, 25
         self.img = pygame.Rect(self.x, self.y, self.width, self.height)
 
     def draw(self, window):
@@ -139,18 +139,31 @@ class Food:
         pygame.draw.rect(window, (0, 255, 0), self.img)
 
 
+def draw_grid(width, rows, window):
+    sizeBtwn = width // rows
+    print(sizeBtwn)
+    x = 0
+    y = 0
+    for l in range(rows):
+        x = x + sizeBtwn
+        y = y + sizeBtwn
+        pygame.draw.line(window, (255, 255, 255), (x, 0), (x, width))
+        pygame.draw.line(window, (255, 255, 255), (0, y), (width, y))
+
+
 def main():
     ####################################################################################
     # Initialise
+    ROWS = 20
     run = True
-    player = Player(WIDTH // 2, HEIGHT // 2, 4)
-    computer = Computer(350, 100, 2)
+    player = Player(25 * 3, 25 * 15, 4)
+    computer = Computer(350, 100, 3)
     score = 0
     numFood = 1
     game = []
-    randx = random.randint(0, WIDTH - 50)
-    randy = random.randint(0, HEIGHT - 50)
-    food = Food(randx, randy)
+    randx = random.randint(0, ROWS)
+    randy = random.randint(0, ROWS)
+    food = Food(25*randx, 25*randy)
     game.append(food)
     game.append(player)
     game.append(computer)
@@ -188,11 +201,11 @@ def main():
         ####################################################################################
         # Game mechanics
         while numFood < 1:
-            randx = random.randint(0, WIDTH - 50)
-            randy = random.randint(0, HEIGHT - 50)
+            randx = random.randint(0, ROWS - 2)
+            randy = random.randint(0, ROWS - 2)
             numFood += 1
             # print("food placed at ({},{})".format(randx, randy))
-            food = Food(randx, randy)
+            food = Food(25*randx, 25*randy)
             game.append(food)
 
         for obj in game:
@@ -224,9 +237,10 @@ def main():
         player.update()
         computer.update()
         pygame.draw.rect(SCREEN, (0, 0, 0), (0, 0, WIDTH, HEIGHT))
-        SCREEN.blit(scores, (10, 10))
         for objects in game:
             objects.draw(SCREEN)
+        draw_grid(WIDTH, ROWS, SCREEN)
+        SCREEN.blit(scores, (10, 10))
         pygame.display.update()
 
 
@@ -248,7 +262,6 @@ def main_menu():
         if keys[pygame.K_SPACE]:
             main()
             pygame.time.wait(1000)
-            print("working")
 
 
 if __name__ == "__main__":
