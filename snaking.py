@@ -12,8 +12,8 @@ SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 CLOCK = pygame.time.Clock()
 
 
-class Player:
-    def __init__(self, x, y, length):
+class Snake:
+    def __init__(self, x, y, length, colour):
         self.body_parts = []
         self.valid = True
         self.x = x
@@ -24,11 +24,42 @@ class Player:
         self.width, self.height = 20, 20
         self.updateCount = 0
         self.updateCountMax = 11
+        self.colour = colour
         for i in range(0, length):
             if i == 0:
-                self.body_parts.append(SnakeBody(self.x, self.y))
+                self.body_parts.append(SnakeBody(self.x, self.y, self.colour))
             else:
-                self.body_parts.append(SnakeBody(self.x, self.body_parts[0].y + self.width))
+                self.body_parts.append(SnakeBody(self.x, self.body_parts[0].y + self.width, self.colour))
+
+    def update(self):
+        self.updateCount = self.updateCount + 1
+        if self.updateCount >= self.updateCountMax:
+
+            for i in range(len(self.body_parts) - 1, 0, -1):
+                self.body_parts[i].x = self.body_parts[i - 1].x
+                self.body_parts[i].y = self.body_parts[i - 1].y
+
+            self.move()
+            self.updateCount = 0
+
+    def draw(self, window):
+        for parts in self.body_parts:
+            parts.draw(window)
+
+    def move(self):
+        if self.direction == 0:  # WEST
+            self.body_parts[0].x = self.body_parts[0].x - self.VEL
+        elif self.direction == 1:  # EAST
+            self.body_parts[0].x = self.body_parts[0].x + self.VEL
+        elif self.direction == 3:  # NORTH
+            self.body_parts[0].y = self.body_parts[0].y - self.VEL
+        elif self.direction == 2:  # SOUTH
+            self.body_parts[0].y = self.body_parts[0].y + self.VEL
+
+
+class Player(Snake):
+    def __init__(self, x, y, length):
+        super().__init__(x, y, length, "red")
 
     def update(self):
         self.updateCount = self.updateCount + 1
@@ -47,39 +78,53 @@ class Player:
             self.move()
             self.updateCount = 0
 
-    def draw(self, window):
-        for parts in self.body_parts:
-            parts.draw(window)
+    def increment_velocity(self):
+        self.updateCount -= 1
 
-    def move(self):
-        if self.direction == 0:  # WEST
-            self.body_parts[0].x = self.body_parts[0].x - self.VEL
-        elif self.direction == 1:  # EAST
-            self.body_parts[0].x = self.body_parts[0].x + self.VEL
-        elif self.direction == 3:  # NORTH
-            self.body_parts[0].y = self.body_parts[0].y - self.VEL
-        elif self.direction == 2:  # SOUTH
-            self.body_parts[0].y = self.body_parts[0].y + self.VEL
+    def eat(self, obj, game):
+        game.remove(obj)
+        self.add_part()
 
     def add_part(self):
         self.length += 1
         self.body_parts.append(SnakeBody(self.body_parts[len(self.body_parts) - 1].x + self.width,
-                                         self.body_parts[len(self.body_parts) - 1].y))
+                                         self.body_parts[len(self.body_parts) - 1].y, "red"))
 
-    def increment_velocity(self):
-        self.updateCount -= 1
+
+class Computer(Snake):
+    def __init__(self, x, y, length):
+        super().__init__(x, y, length, "blue")
+        self.VEL = 3
+
+    def target(self, dx, dy):
+        print("dx,dy,x,y: {},{},{},{}  direction: {}".format(dx, dy, self.body_parts[0].x, self.body_parts[0].y,
+                                                             self.direction))
+        if self.body_parts[0].x > dx:
+            self.direction = 0
+        if self.body_parts[0].x < dx:
+            self.direction = 1
+
+        if -30 < self.body_parts[0].x - dx < 30:
+            if self.body_parts[0].y > dy:
+                self.direction = 3
+            if self.body_parts[0].y < dy:
+                self.direction = 2
 
 
 class SnakeBody:
-    def __init__(self, x, y):
+    def __init__(self, x, y, colour):
         self.x = x
         self.y = y
         self.width, self.height = 20, 20
         self.img = pygame.Rect(self.x, self.y, self.width, self.height)
+        if colour == "red":
+            self.colour = (255, 0, 0)
+        elif colour == "blue":
+            self.colour = (0, 0, 255)
 
     def draw(self, window):
         self.img = pygame.Rect(self.x, self.y, self.width, self.height)
-        pygame.draw.rect(window, (255, 0, 0), self.img)
+        pygame.draw.rect(window, self.colour, self.img)
 
 
 class Food:
@@ -99,6 +144,7 @@ def main():
     # Initialise
     run = True
     player = Player(WIDTH // 2, HEIGHT // 2, 4)
+    computer = Computer(350, 100, 2)
     score = 0
     numFood = 1
     game = []
@@ -107,6 +153,7 @@ def main():
     food = Food(randx, randy)
     game.append(food)
     game.append(player)
+    game.append(computer)
     while run:
         ####################################################################################
         # Setup
@@ -153,8 +200,7 @@ def main():
                 if player.body_parts[0].img.colliderect(obj.img) and obj in game:
                     numFood -= 1
                     score += 1
-                    game.remove(obj)
-                    player.add_part()
+                    player.eat(obj, game)
 
         ####################################################################################
         # Game exit conditions
@@ -162,12 +208,21 @@ def main():
             if player.body_parts[0].img.colliderect(player.body_parts[i].img) and i != 0:
                 run = False
 
+        for obj in game:
+            if isinstance(obj, Computer):
+                for i in range(0, len(player.body_parts)):
+                    for j in range(0, len(computer.body_parts)):
+                        if player.body_parts[i].img.colliderect(computer.body_parts[j].img) and obj in game:
+                            run = False
+
         if (not (0 <= player.body_parts[0].x <= WIDTH - player.width)) or (
                 not (0 <= player.body_parts[0].y <= HEIGHT - player.height)):
             run = False
         ####################################################################################
         # Updates and Drawings
+        computer.target(player.body_parts[0].x, player.body_parts[0].y)
         player.update()
+        computer.update()
         pygame.draw.rect(SCREEN, (0, 0, 0), (0, 0, WIDTH, HEIGHT))
         SCREEN.blit(scores, (10, 10))
         for objects in game:
